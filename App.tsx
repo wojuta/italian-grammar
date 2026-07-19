@@ -103,7 +103,7 @@ export default function App() {
               <Text style={styles.questionCount}>10 CVIČENÍ · 100 VĚT</Text>
             </View>
             <Text style={styles.lessonTitle}>Zájmena přímá{`\n`}a nepřímá</Text>
-            <Text style={styles.lessonText}>lo, la, li, le • gli, le • glielo, gliela…</Text>
+            <Text style={styles.lessonText}>mi, ti, ci, vi • lo, la, li, le • me lo, te la, ce li, ve le…</Text>
             <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
           </Pressable>
         </ScrollView>
@@ -118,9 +118,9 @@ export default function App() {
 
           <View style={styles.ruleCard}>
             <Text style={styles.ruleTitle}>Rychlý přehled</Text>
-            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Přímá:</Text> lo, la, li, le</Text>
-            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Nepřímá:</Text> gli, le</Text>
-            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Kombinovaná:</Text> glielo, gliela, glieli, gliele</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Přímá:</Text> mi, ti, lo, la, ci, vi, li, le</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Nepřímá:</Text> mi, ti, gli, le, ci, vi</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Kombinovaná:</Text> me, te, ce, ve + lo/la/li/le; glielo…</Text>
           </View>
 
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
