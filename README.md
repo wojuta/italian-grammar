@@ -20,7 +20,7 @@ Po spuštění otevřete aplikaci v Expo Go pomocí QR kódu, případně stiskn
 - domovská obrazovka se vstupem do Gramatiky,
 - samostatná lekce „Zájmena přímá a nepřímá“,
 - 10 pevných cvičení po 10 otázkách A/B/C,
-- celkem 100 vět s přímými, nepřímými i kombinovanými zájmeny,
+- celkem 100 vět s přímými, nepřímými i kombinovanými zájmeny ve všech osobách,
 - pevné přiřazení vět a jejich pořadí bez náhodného výběru,
 - okamžitá zpětná vazba s vysvětlením,
 - závěrečné skóre a možnost vygenerovat novou sadu.
