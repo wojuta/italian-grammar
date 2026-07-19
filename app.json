@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Italština",
+    "slug": "italian-grammar",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "cz.wojuta.italiangrammar"
+    },
+    "android": {
+      "package": "cz.wojuta.italiangrammar"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
