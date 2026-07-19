@@ -9,9 +9,9 @@ import {
   View,
 } from 'react-native';
 
-import { Exercise, generateExerciseSet } from './src/exercises';
+import { Exercise, exerciseSets, getExerciseSet } from './src/exercises';
 
-type Screen = 'home' | 'grammar' | 'quiz' | 'result';
+type Screen = 'home' | 'grammar' | 'pronouns' | 'quiz' | 'result';
 
 const COLORS = {
   ink: '#173B3A',
@@ -28,16 +28,21 @@ const COLORS = {
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
-  const [questions, setQuestions] = useState<Exercise[]>(() => generateExerciseSet());
+  const [questions, setQuestions] = useState<Exercise[]>([]);
+  const [activeSetId, setActiveSetId] = useState(exerciseSets[0]?.id ?? '');
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
 
   const question = questions[current];
+  const activeSet = getExerciseSet(activeSetId);
   const progress = useMemo(() => `${current + 1} / ${questions.length}`, [current, questions.length]);
 
-  const beginQuiz = () => {
-    setQuestions(generateExerciseSet());
+  const beginQuiz = (setId: string = activeSetId) => {
+    const selectedSet = getExerciseSet(setId);
+    if (!selectedSet) return;
+    setActiveSetId(setId);
+    setQuestions(selectedSet.questions);
     setCurrent(0);
     setSelected(null);
     setScore(0);
@@ -91,27 +96,60 @@ export default function App() {
           <BackButton onPress={() => setScreen('home')} />
           <Text style={styles.eyebrow}>PŘEHLED LEKCÍ</Text>
           <Text style={styles.heading}>Gramatika</Text>
-          <Text style={styles.lead}>Vyber si téma a upevni si ho v deseti rychlých otázkách.</Text>
-          <Pressable accessibilityRole="button" onPress={beginQuiz} style={({ pressed }) => [styles.lessonTile, pressed && styles.pressed]}>
+          <Text style={styles.lead}>Vyber si gramatické téma a postupuj jednotlivými cvičeními.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setScreen('pronouns')} style={({ pressed }) => [styles.lessonTile, pressed && styles.pressed]}>
             <View style={styles.lessonTop}>
               <View style={styles.badge}><Text style={styles.badgeText}>A1–A2</Text></View>
-              <Text style={styles.questionCount}>10 OTÁZEK</Text>
+              <Text style={styles.questionCount}>10 CVIČENÍ · 100 VĚT</Text>
             </View>
             <Text style={styles.lessonTitle}>Zájmena přímá{`\n`}a nepřímá</Text>
             <Text style={styles.lessonText}>lo, la, li, le • gli, le • glielo, gliela…</Text>
-            <View style={styles.startRow}><Text style={styles.startText}>Spustit cvičení</Text><Text style={styles.startArrow}>→</Text></View>
+            <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
           </Pressable>
+        </ScrollView>
+      )}
+
+      {screen === 'pronouns' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('grammar')} />
+          <Text style={styles.eyebrow}>GRAMATIKA · A1–A2</Text>
+          <Text style={styles.heading}>Zájmena přímá{`\n`}a nepřímá</Text>
+          <Text style={styles.lead}>Deset pevných cvičení po deseti větách. Začni přímými zájmeny a postupně přejdi ke kombinacím.</Text>
+
+          <View style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>Rychlý přehled</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Přímá:</Text> lo, la, li, le</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Nepřímá:</Text> gli, le</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>Kombinovaná:</Text> glielo, gliela, glieli, gliele</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
+          <View style={styles.exerciseList}>
+            {exerciseSets.map((set) => (
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id)} style={({ pressed }) => [styles.exerciseTile, pressed && styles.pressed]}>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
+                <View style={styles.exerciseCopy}>
+                  <Text style={styles.exerciseTitle}>{set.title}</Text>
+                  <Text style={styles.exerciseDescription}>{set.description}</Text>
+                </View>
+                <View style={styles.exerciseMeta}>
+                  <Text style={styles.exerciseCount}>10 VĚT</Text>
+                  <Text style={styles.exerciseArrow}>›</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
         </ScrollView>
       )}
 
       {screen === 'quiz' && question && (
         <ScrollView contentContainerStyle={styles.quizPage}>
           <View style={styles.quizHeader}>
-            <Pressable accessibilityLabel="Ukončit cvičení" onPress={() => setScreen('grammar')} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
+            <Pressable accessibilityLabel="Ukončit cvičení" onPress={() => setScreen('pronouns')} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
             <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${((current + 1) / questions.length) * 100}%` }]} /></View>
             <Text style={styles.progressText}>{progress}</Text>
           </View>
-          <Text style={styles.kind}>{question.kind.toUpperCase()}</Text>
+          <Text style={styles.kind}>CVIČENÍ {activeSet?.number} · {question.kind.toUpperCase()}</Text>
           <Text style={styles.prompt}>Nahraď vyznačenou část správným zájmenem.</Text>
           <View style={styles.sentenceCard}>
             <Text style={styles.sentence}>{question.sentence}</Text>
@@ -147,8 +185,11 @@ export default function App() {
           <Text style={styles.resultScore}>{score} / 10</Text>
           <Text style={styles.heading}>{score >= 8 ? 'Ottimo lavoro!' : score >= 5 ? 'Dobrá práce!' : 'Každý pokus se počítá.'}</Text>
           <Text style={styles.lead}>Správně jsi odpověděl/a na {score} z 10 otázek.</Text>
-          <Pressable accessibilityRole="button" onPress={beginQuiz} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Procvičit znovu</Text></Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setScreen('grammar')} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Zpět na gramatiku</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => beginQuiz()} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Procvičit znovu</Text></Pressable>
+          {activeSet && activeSet.number < exerciseSets.length && (
+            <Pressable accessibilityRole="button" onPress={() => beginQuiz(exerciseSets[activeSet.number]?.id ?? activeSetId)} style={styles.nextSetButton}><Text style={styles.nextSetButtonText}>Pokračovat cvičením {activeSet.number + 1}  →</Text></Pressable>
+          )}
+          <Pressable accessibilityRole="button" onPress={() => setScreen('pronouns')} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Zpět na seznam cvičení</Text></Pressable>
         </View>
       )}
     </SafeAreaView>
@@ -184,6 +225,11 @@ const styles = StyleSheet.create({
   lessonTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, badge: { backgroundColor: COLORS.paleGreen, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }, badgeText: { color: COLORS.green, fontSize: 11, fontWeight: '800' },
   questionCount: { color: COLORS.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 }, lessonTitle: { color: COLORS.ink, fontSize: 28, lineHeight: 33, fontWeight: '800', marginTop: 28 }, lessonText: { color: COLORS.muted, fontSize: 14, marginTop: 10 },
   startRow: { borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 28, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between' }, startText: { color: COLORS.green, fontWeight: '800', fontSize: 15 }, startArrow: { color: COLORS.green, fontSize: 20 },
+  ruleCard: { backgroundColor: COLORS.ink, borderRadius: 22, padding: 22, marginTop: 30 }, ruleTitle: { color: COLORS.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.4, marginBottom: 12 }, ruleLine: { color: '#E7F0EC', fontSize: 14, lineHeight: 24 }, ruleStrong: { color: '#FFF', fontWeight: '800' },
+  exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
+  exerciseNumber: { width: 48, height: 48, borderRadius: 15, backgroundColor: COLORS.paleGreen, alignItems: 'center', justifyContent: 'center' }, exerciseNumberText: { color: COLORS.green, fontSize: 18, fontWeight: '900' },
+  exerciseCopy: { flex: 1, marginLeft: 13 }, exerciseTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800' }, exerciseDescription: { color: COLORS.muted, fontSize: 12, marginTop: 5 },
+  exerciseMeta: { alignItems: 'flex-end', marginLeft: 8 }, exerciseCount: { color: COLORS.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 }, exerciseArrow: { color: COLORS.green, fontSize: 28, lineHeight: 31 },
   quizHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 34 }, close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }, closeText: { color: COLORS.muted, fontSize: 30 },
   progressTrack: { flex: 1, height: 7, backgroundColor: '#E0E3DA', borderRadius: 8, overflow: 'hidden' }, progressFill: { height: '100%', backgroundColor: COLORS.green, borderRadius: 8 }, progressText: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
   kind: { color: COLORS.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.3 }, prompt: { color: COLORS.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', marginTop: 10 },
@@ -195,4 +241,5 @@ const styles = StyleSheet.create({
   nextButton: { backgroundColor: COLORS.ink, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 }, nextButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
   resultPage: { alignItems: 'center', justifyContent: 'center' }, resultEmoji: { fontSize: 60, marginBottom: 22 }, resultScore: { color: COLORS.green, fontSize: 64, fontWeight: '900', letterSpacing: -3, marginTop: 14 },
   primaryButton: { backgroundColor: COLORS.green, borderRadius: 16, paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 38 }, primaryButtonText: { color: '#FFF', fontWeight: '800', fontSize: 16 }, secondaryButton: { paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 8 }, secondaryButtonText: { color: COLORS.green, fontWeight: '800', fontSize: 15 },
+  nextSetButton: { backgroundColor: COLORS.ink, borderRadius: 16, paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 10 }, nextSetButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
 });
