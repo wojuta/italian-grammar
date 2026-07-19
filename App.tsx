@@ -9,9 +9,11 @@ import {
   View,
 } from 'react-native';
 
-import { Exercise, exerciseSets, getExerciseSet } from './src/exercises';
+import { Exercise, exerciseSets } from './src/exercises';
+import { futureExerciseSets } from './src/futureExercises';
 
-type Screen = 'home' | 'grammar' | 'pronouns' | 'quiz' | 'result';
+type Screen = 'home' | 'grammar' | 'pronouns' | 'future' | 'quiz' | 'result';
+type Lesson = 'pronouns' | 'future';
 
 const COLORS = {
   ink: '#173B3A',
@@ -30,17 +32,22 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [questions, setQuestions] = useState<Exercise[]>([]);
   const [activeSetId, setActiveSetId] = useState(exerciseSets[0]?.id ?? '');
+  const [activeLesson, setActiveLesson] = useState<Lesson>('pronouns');
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
 
   const question = questions[current];
-  const activeSet = getExerciseSet(activeSetId);
+  const currentSets = activeLesson === 'pronouns' ? exerciseSets : futureExerciseSets;
+  const activeSet = currentSets.find((set) => set.id === activeSetId);
+  const lessonScreen: Screen = activeLesson === 'pronouns' ? 'pronouns' : 'future';
   const progress = useMemo(() => `${current + 1} / ${questions.length}`, [current, questions.length]);
 
-  const beginQuiz = (setId: string = activeSetId) => {
-    const selectedSet = getExerciseSet(setId);
+  const beginQuiz = (setId: string = activeSetId, lesson: Lesson = activeLesson) => {
+    const sets = lesson === 'pronouns' ? exerciseSets : futureExerciseSets;
+    const selectedSet = sets.find((set) => set.id === setId);
     if (!selectedSet) return;
+    setActiveLesson(lesson);
     setActiveSetId(setId);
     setQuestions(selectedSet.questions);
     setCurrent(0);
@@ -106,6 +113,15 @@ export default function App() {
             <Text style={styles.lessonText}>mi, ti, ci, vi • lo, la, li, le • me lo, te la, ce li, ve le…</Text>
             <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
           </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setScreen('future')} style={({ pressed }) => [styles.lessonTile, styles.secondLessonTile, pressed && styles.pressed]}>
+            <View style={styles.lessonTop}>
+              <View style={styles.badge}><Text style={styles.badgeText}>A2</Text></View>
+              <Text style={styles.questionCount}>10 CVIČENÍ · 100 VĚT</Text>
+            </View>
+            <Text style={styles.lessonTitle}>Budoucí čas</Text>
+            <Text style={styles.lessonText}>parlerò, prenderai, partiremo • sarò, avrò, andrò…</Text>
+            <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
+          </Pressable>
         </ScrollView>
       )}
 
@@ -126,7 +142,7 @@ export default function App() {
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
           <View style={styles.exerciseList}>
             {exerciseSets.map((set) => (
-              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id)} style={({ pressed }) => [styles.exerciseTile, pressed && styles.pressed]}>
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'pronouns')} style={({ pressed }) => [styles.exerciseTile, pressed && styles.pressed]}>
                 <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
                 <View style={styles.exerciseCopy}>
                   <Text style={styles.exerciseTitle}>{set.title}</Text>
@@ -142,15 +158,55 @@ export default function App() {
         </ScrollView>
       )}
 
+      {screen === 'future' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('grammar')} />
+          <Text style={styles.eyebrow}>GRAMATIKA · A2</Text>
+          <Text style={styles.heading}>Budoucí čas</Text>
+          <Text style={styles.lead}>Deset pevných cvičení po deseti větách. Nejprve si upevni pravidelná slovesa, potom nepravidelné kmeny.</Text>
+
+          <View style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>KONCOVKY FUTURO SEMPLICE</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>io</Text> -ò  ·  <Text style={styles.ruleStrong}>tu</Text> -ai  ·  <Text style={styles.ruleStrong}>lui/lei</Text> -à</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>noi</Text> -emo  ·  <Text style={styles.ruleStrong}>voi</Text> -ete  ·  <Text style={styles.ruleStrong}>loro</Text> -anno</Text>
+            <Text style={styles.ruleLine}>U sloves na <Text style={styles.ruleStrong}>-are</Text> se a mění na e: parlare → parler-.</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
+          <View style={styles.exerciseList}>
+            {futureExerciseSets.map((set) => (
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'future')} style={({ pressed }) => [styles.exerciseTile, set.stemReminder && styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
+                <View style={styles.exerciseCopy}>
+                  <Text style={styles.exerciseTitle}>{set.title}</Text>
+                  <Text style={styles.exerciseDescription}>{set.description}</Text>
+                  {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
+                </View>
+                <View style={styles.exerciseMeta}>
+                  <Text style={styles.exerciseCount}>10 VĚT</Text>
+                  <Text style={styles.exerciseArrow}>›</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
       {screen === 'quiz' && question && (
         <ScrollView contentContainerStyle={styles.quizPage}>
           <View style={styles.quizHeader}>
-            <Pressable accessibilityLabel="Ukončit cvičení" onPress={() => setScreen('pronouns')} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
+            <Pressable accessibilityLabel="Ukončit cvičení" onPress={() => setScreen(lessonScreen)} style={styles.close}><Text style={styles.closeText}>×</Text></Pressable>
             <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${((current + 1) / questions.length) * 100}%` }]} /></View>
             <Text style={styles.progressText}>{progress}</Text>
           </View>
           <Text style={styles.kind}>CVIČENÍ {activeSet?.number} · {question.kind.toUpperCase()}</Text>
-          <Text style={styles.prompt}>Nahraď vyznačenou část správným zájmenem.</Text>
+          <Text style={styles.prompt}>{question.kind === 'Budoucí čas' ? 'Doplň správný tvar slovesa v budoucím čase.' : 'Nahraď vyznačenou část správným zájmenem.'}</Text>
+          {current === 0 && activeSet?.stemReminder && (
+            <View style={styles.stemReminderCard}>
+              <Text style={styles.stemReminderLabel}>NEPRAVIDELNÉ KMENY</Text>
+              <Text style={styles.stemReminderText}>{activeSet.stemReminder}</Text>
+            </View>
+          )}
           <View style={styles.sentenceCard}>
             <Text style={styles.sentence}>{question.sentence}</Text>
             <Text style={styles.task}>{question.task}</Text>
@@ -186,10 +242,10 @@ export default function App() {
           <Text style={styles.heading}>{score >= 8 ? 'Ottimo lavoro!' : score >= 5 ? 'Dobrá práce!' : 'Každý pokus se počítá.'}</Text>
           <Text style={styles.lead}>Správně jsi odpověděl/a na {score} z 10 otázek.</Text>
           <Pressable accessibilityRole="button" onPress={() => beginQuiz()} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Procvičit znovu</Text></Pressable>
-          {activeSet && activeSet.number < exerciseSets.length && (
-            <Pressable accessibilityRole="button" onPress={() => beginQuiz(exerciseSets[activeSet.number]?.id ?? activeSetId)} style={styles.nextSetButton}><Text style={styles.nextSetButtonText}>Pokračovat cvičením {activeSet.number + 1}  →</Text></Pressable>
+          {activeSet && activeSet.number < currentSets.length && (
+            <Pressable accessibilityRole="button" onPress={() => beginQuiz(currentSets[activeSet.number]?.id ?? activeSetId)} style={styles.nextSetButton}><Text style={styles.nextSetButtonText}>Pokračovat cvičením {activeSet.number + 1}  →</Text></Pressable>
           )}
-          <Pressable accessibilityRole="button" onPress={() => setScreen('pronouns')} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Zpět na seznam cvičení</Text></Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setScreen(lessonScreen)} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Zpět na seznam cvičení</Text></Pressable>
         </View>
       )}
     </SafeAreaView>
@@ -222,17 +278,19 @@ const styles = StyleSheet.create({
   back: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', marginBottom: 38, borderWidth: 1, borderColor: COLORS.line },
   backText: { color: COLORS.ink, fontSize: 34, lineHeight: 37 }, heading: { color: COLORS.ink, fontSize: 40, fontWeight: '800', letterSpacing: -1.4, marginTop: 7 },
   lessonTile: { backgroundColor: COLORS.card, borderRadius: 26, padding: 24, marginTop: 36, borderWidth: 1, borderColor: COLORS.line, shadowColor: '#29443D', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
+  secondLessonTile: { marginTop: 16 },
   lessonTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, badge: { backgroundColor: COLORS.paleGreen, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }, badgeText: { color: COLORS.green, fontSize: 11, fontWeight: '800' },
   questionCount: { color: COLORS.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 }, lessonTitle: { color: COLORS.ink, fontSize: 28, lineHeight: 33, fontWeight: '800', marginTop: 28 }, lessonText: { color: COLORS.muted, fontSize: 14, marginTop: 10 },
   startRow: { borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 28, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between' }, startText: { color: COLORS.green, fontWeight: '800', fontSize: 15 }, startArrow: { color: COLORS.green, fontSize: 20 },
   ruleCard: { backgroundColor: COLORS.ink, borderRadius: 22, padding: 22, marginTop: 30 }, ruleTitle: { color: COLORS.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.4, marginBottom: 12 }, ruleLine: { color: '#E7F0EC', fontSize: 14, lineHeight: 24 }, ruleStrong: { color: '#FFF', fontWeight: '800' },
-  exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
+  exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line }, exerciseTileWithReminder: { minHeight: 100 },
   exerciseNumber: { width: 48, height: 48, borderRadius: 15, backgroundColor: COLORS.paleGreen, alignItems: 'center', justifyContent: 'center' }, exerciseNumberText: { color: COLORS.green, fontSize: 18, fontWeight: '900' },
-  exerciseCopy: { flex: 1, marginLeft: 13 }, exerciseTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800' }, exerciseDescription: { color: COLORS.muted, fontSize: 12, marginTop: 5 },
+  exerciseCopy: { flex: 1, marginLeft: 13 }, exerciseTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800' }, exerciseDescription: { color: COLORS.muted, fontSize: 12, marginTop: 5 }, exerciseStems: { color: COLORS.green, fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 6 },
   exerciseMeta: { alignItems: 'flex-end', marginLeft: 8 }, exerciseCount: { color: COLORS.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 }, exerciseArrow: { color: COLORS.green, fontSize: 28, lineHeight: 31 },
   quizHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 34 }, close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }, closeText: { color: COLORS.muted, fontSize: 30 },
   progressTrack: { flex: 1, height: 7, backgroundColor: '#E0E3DA', borderRadius: 8, overflow: 'hidden' }, progressFill: { height: '100%', backgroundColor: COLORS.green, borderRadius: 8 }, progressText: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
   kind: { color: COLORS.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.3 }, prompt: { color: COLORS.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', marginTop: 10 },
+  stemReminderCard: { backgroundColor: COLORS.paleGreen, borderRadius: 16, padding: 16, marginTop: 18, borderWidth: 1, borderColor: '#BCD9CA' }, stemReminderLabel: { color: COLORS.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 }, stemReminderText: { color: COLORS.ink, fontSize: 14, lineHeight: 21, fontWeight: '700', marginTop: 6 },
   sentenceCard: { backgroundColor: COLORS.card, borderRadius: 20, padding: 22, marginTop: 24, borderLeftWidth: 4, borderLeftColor: COLORS.gold }, sentence: { color: COLORS.ink, fontSize: 20, lineHeight: 29, fontStyle: 'italic', fontWeight: '600' }, task: { color: COLORS.muted, fontSize: 13, marginTop: 11 },
   options: { gap: 12, marginTop: 22 }, option: { minHeight: 66, backgroundColor: COLORS.card, borderRadius: 18, borderWidth: 1.5, borderColor: COLORS.line, flexDirection: 'row', alignItems: 'center', padding: 12 },
   optionLetter: { width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.cream, alignItems: 'center', justifyContent: 'center', marginRight: 13 }, optionLetterText: { color: COLORS.ink, fontWeight: '800' }, optionText: { flex: 1, color: COLORS.ink, fontSize: 15, lineHeight: 21, fontWeight: '600' },

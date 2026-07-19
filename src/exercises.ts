@@ -1,4 +1,4 @@
-export type ExerciseKind = 'Přímá zájmena' | 'Nepřímá zájmena' | 'Kombinovaná zájmena';
+export type ExerciseKind = 'Přímá zájmena' | 'Nepřímá zájmena' | 'Kombinovaná zájmena' | 'Budoucí čas';
 
 export type Exercise = {
   id: string;
@@ -15,6 +15,7 @@ export type ExerciseSet = {
   number: number;
   title: string;
   description: string;
+  stemReminder?: string;
   questions: Exercise[];
 };
 
