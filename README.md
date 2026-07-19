@@ -2,6 +2,8 @@
 
 Mobilní aplikace pro postupné procvičování italštiny. První lekce se věnuje přímým, nepřímým a kombinovaným zájmenům.
 
+Webová verze: <https://wojuta.github.io/italian-grammar/>
+
 ## Spuštění
 
 Vyžaduje Node.js 20 nebo novější.
