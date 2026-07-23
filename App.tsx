@@ -11,9 +11,26 @@ import {
 
 import { Exercise, exerciseSets } from './src/exercises';
 import { futureExerciseSets } from './src/futureExercises';
+import { presentExerciseSets } from './src/presentExercises';
+import { reflexiveExerciseSets } from './src/reflexiveExercises';
+import { getExerciseTranslation } from './src/translations';
 
-type Screen = 'home' | 'grammar' | 'pronouns' | 'future' | 'quiz' | 'result';
-type Lesson = 'pronouns' | 'future';
+type Screen = 'home' | 'grammar' | 'pronouns' | 'future' | 'reflexive' | 'present' | 'quiz' | 'result';
+type Lesson = 'pronouns' | 'future' | 'reflexive' | 'present';
+
+const lessonSets = {
+  pronouns: exerciseSets,
+  future: futureExerciseSets,
+  reflexive: reflexiveExerciseSets,
+  present: presentExerciseSets,
+};
+
+const lessonScreens: Record<Lesson, Screen> = {
+  pronouns: 'pronouns',
+  future: 'future',
+  reflexive: 'reflexive',
+  present: 'present',
+};
 
 const COLORS = {
   ink: '#173B3A',
@@ -38,13 +55,14 @@ export default function App() {
   const [score, setScore] = useState(0);
 
   const question = questions[current];
-  const currentSets = activeLesson === 'pronouns' ? exerciseSets : futureExerciseSets;
+  const currentSets = lessonSets[activeLesson];
   const activeSet = currentSets.find((set) => set.id === activeSetId);
-  const lessonScreen: Screen = activeLesson === 'pronouns' ? 'pronouns' : 'future';
+  const lessonScreen = lessonScreens[activeLesson];
+  const translation = question?.translation ?? (question ? getExerciseTranslation(question.id) : undefined);
   const progress = useMemo(() => `${current + 1} / ${questions.length}`, [current, questions.length]);
 
   const beginQuiz = (setId: string = activeSetId, lesson: Lesson = activeLesson) => {
-    const sets = lesson === 'pronouns' ? exerciseSets : futureExerciseSets;
+    const sets = lessonSets[lesson];
     const selectedSet = sets.find((set) => set.id === setId);
     if (!selectedSet) return;
     setActiveLesson(lesson);
@@ -122,6 +140,24 @@ export default function App() {
             <Text style={styles.lessonText}>parlerò, prenderai, partiremo • sarò, avrò, andrò…</Text>
             <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
           </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setScreen('reflexive')} style={({ pressed }) => [styles.lessonTile, styles.secondLessonTile, pressed && styles.pressed]}>
+            <View style={styles.lessonTop}>
+              <View style={styles.badge}><Text style={styles.badgeText}>A1–A2</Text></View>
+              <Text style={styles.questionCount}>5 CVIČENÍ · 50 VĚT</Text>
+            </View>
+            <Text style={styles.lessonTitle}>Zvratná slovesa</Text>
+            <Text style={styles.lessonText}>mi alzo, ti lavi, ci vediamo • alzati • devo svegliarmi</Text>
+            <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setScreen('present')} style={({ pressed }) => [styles.lessonTile, styles.secondLessonTile, pressed && styles.pressed]}>
+            <View style={styles.lessonTop}>
+              <View style={styles.badge}><Text style={styles.badgeText}>A1</Text></View>
+              <Text style={styles.questionCount}>6 CVIČENÍ · 60 VĚT</Text>
+            </View>
+            <Text style={styles.lessonTitle}>Přítomný čas{`\n`}pravidelných sloves</Text>
+            <Text style={styles.lessonText}>-are • -ere • -ire • slovesa s vložkou -isc-</Text>
+            <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
+          </Pressable>
         </ScrollView>
       )}
 
@@ -192,6 +228,70 @@ export default function App() {
         </ScrollView>
       )}
 
+      {screen === 'reflexive' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('grammar')} />
+          <Text style={styles.eyebrow}>GRAMATIKA · A1–A2</Text>
+          <Text style={styles.heading}>Zvratná slovesa</Text>
+          <Text style={styles.lead}>Pět pevných cvičení po deseti větách: přítomný čas, slovosled, infinitiv, rozkazovací způsob i vzájemné děje.</Text>
+
+          <View style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>ZÁJMENA A SLOVOSLED</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>io</Text> mi · <Text style={styles.ruleStrong}>tu</Text> ti · <Text style={styles.ruleStrong}>lui/lei</Text> si · <Text style={styles.ruleStrong}>noi</Text> ci · <Text style={styles.ruleStrong}>voi</Text> vi · <Text style={styles.ruleStrong}>loro</Text> si</Text>
+            <Text style={styles.ruleLine}>Před určitým slovesem: <Text style={styles.ruleStrong}>mi alzo</Text>, non si veste.</Text>
+            <Text style={styles.ruleLine}>S infinitivem: <Text style={styles.ruleStrong}>mi devo alzare = devo alzarmi</Text>.</Text>
+            <Text style={styles.ruleLine}>Kladný rozkaz: <Text style={styles.ruleStrong}>alzati, alzatevi</Text>. Záporný pro tu: <Text style={styles.ruleStrong}>non alzarti</Text>.</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
+          <View style={styles.exerciseList}>
+            {reflexiveExerciseSets.map((set) => (
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'reflexive')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
+                <View style={styles.exerciseCopy}>
+                  <Text style={styles.exerciseTitle}>{set.title}</Text>
+                  <Text style={styles.exerciseDescription}>{set.description}</Text>
+                  {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
+                </View>
+                <View style={styles.exerciseMeta}><Text style={styles.exerciseCount}>10 VĚT</Text><Text style={styles.exerciseArrow}>›</Text></View>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {screen === 'present' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('grammar')} />
+          <Text style={styles.eyebrow}>GRAMATIKA · A1</Text>
+          <Text style={styles.heading}>Přítomný čas{`\n`}pravidelných sloves</Text>
+          <Text style={styles.lead}>Šest pevných cvičení po deseti větách. Každá slovesná třída má dvě samostatná cvičení.</Text>
+
+          <View style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>KONCOVKY PRESENTE</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>-are:</Text> -o, -i, -a, -iamo, -ate, -ano</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>-ere:</Text> -o, -i, -e, -iamo, -ete, -ono</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>-ire:</Text> -o, -i, -e, -iamo, -ite, -ono</Text>
+            <Text style={styles.ruleLine}>Některá slovesa na -ire vkládají <Text style={styles.ruleStrong}>-isc-</Text> u io, tu, lui/lei a loro: finisco, finisci, finisce, finiscono.</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
+          <View style={styles.exerciseList}>
+            {presentExerciseSets.map((set) => (
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'present')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
+                <View style={styles.exerciseCopy}>
+                  <Text style={styles.exerciseTitle}>{set.title}</Text>
+                  <Text style={styles.exerciseDescription}>{set.description}</Text>
+                  {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
+                </View>
+                <View style={styles.exerciseMeta}><Text style={styles.exerciseCount}>10 VĚT</Text><Text style={styles.exerciseArrow}>›</Text></View>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
       {screen === 'quiz' && question && (
         <ScrollView contentContainerStyle={styles.quizPage}>
           <View style={styles.quizHeader}>
@@ -200,15 +300,29 @@ export default function App() {
             <Text style={styles.progressText}>{progress}</Text>
           </View>
           <Text style={styles.kind}>CVIČENÍ {activeSet?.number} · {question.kind.toUpperCase()}</Text>
-          <Text style={styles.prompt}>{question.kind === 'Budoucí čas' ? 'Doplň správný tvar slovesa v budoucím čase.' : 'Nahraď vyznačenou část správným zájmenem.'}</Text>
+          <Text style={styles.prompt}>{
+            question.kind === 'Budoucí čas'
+              ? 'Doplň správný tvar slovesa v budoucím čase.'
+              : question.kind === 'Zvratná slovesa'
+                ? 'Vyber správný tvar zvratného slovesa.'
+                : question.kind === 'Přítomný čas'
+                  ? 'Doplň správný tvar slovesa v přítomném čase.'
+                  : 'Nahraď vyznačenou část správným zájmenem.'
+          }</Text>
           {current === 0 && activeSet?.stemReminder && (
             <View style={styles.stemReminderCard}>
-              <Text style={styles.stemReminderLabel}>NEPRAVIDELNÉ KMENY</Text>
+              <Text style={styles.stemReminderLabel}>{activeSet.reminderTitle ?? 'NEPRAVIDELNÉ KMENY'}</Text>
               <Text style={styles.stemReminderText}>{activeSet.stemReminder}</Text>
             </View>
           )}
           <View style={styles.sentenceCard}>
             <Text style={styles.sentence}>{question.sentence}</Text>
+            {translation && (
+              <View style={styles.translationRow}>
+                <Text style={styles.translationLabel}>CZ</Text>
+                <Text style={styles.translationText}>{translation}</Text>
+              </View>
+            )}
             <Text style={styles.task}>{question.task}</Text>
           </View>
           <View style={styles.options}>
@@ -291,7 +405,9 @@ const styles = StyleSheet.create({
   progressTrack: { flex: 1, height: 7, backgroundColor: '#E0E3DA', borderRadius: 8, overflow: 'hidden' }, progressFill: { height: '100%', backgroundColor: COLORS.green, borderRadius: 8 }, progressText: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
   kind: { color: COLORS.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.3 }, prompt: { color: COLORS.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', marginTop: 10 },
   stemReminderCard: { backgroundColor: COLORS.paleGreen, borderRadius: 16, padding: 16, marginTop: 18, borderWidth: 1, borderColor: '#BCD9CA' }, stemReminderLabel: { color: COLORS.green, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 }, stemReminderText: { color: COLORS.ink, fontSize: 14, lineHeight: 21, fontWeight: '700', marginTop: 6 },
-  sentenceCard: { backgroundColor: COLORS.card, borderRadius: 20, padding: 22, marginTop: 24, borderLeftWidth: 4, borderLeftColor: COLORS.gold }, sentence: { color: COLORS.ink, fontSize: 20, lineHeight: 29, fontStyle: 'italic', fontWeight: '600' }, task: { color: COLORS.muted, fontSize: 13, marginTop: 11 },
+  sentenceCard: { backgroundColor: COLORS.card, borderRadius: 20, padding: 22, marginTop: 24, borderLeftWidth: 4, borderLeftColor: COLORS.gold }, sentence: { color: COLORS.ink, fontSize: 20, lineHeight: 29, fontStyle: 'italic', fontWeight: '600' },
+  translationRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: COLORS.line }, translationLabel: { color: COLORS.green, fontSize: 10, lineHeight: 20, fontWeight: '900', letterSpacing: 1 }, translationText: { flex: 1, color: COLORS.muted, fontSize: 14, lineHeight: 20 },
+  task: { color: COLORS.muted, fontSize: 13, marginTop: 11 },
   options: { gap: 12, marginTop: 22 }, option: { minHeight: 66, backgroundColor: COLORS.card, borderRadius: 18, borderWidth: 1.5, borderColor: COLORS.line, flexDirection: 'row', alignItems: 'center', padding: 12 },
   optionLetter: { width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.cream, alignItems: 'center', justifyContent: 'center', marginRight: 13 }, optionLetterText: { color: COLORS.ink, fontWeight: '800' }, optionText: { flex: 1, color: COLORS.ink, fontSize: 15, lineHeight: 21, fontWeight: '600' },
   correctOption: { borderColor: COLORS.green, backgroundColor: COLORS.paleGreen }, wrongOption: { borderColor: COLORS.red, backgroundColor: COLORS.paleRed }, correctLetter: { backgroundColor: COLORS.green }, wrongLetter: { backgroundColor: COLORS.red }, whiteText: { color: '#FFF' },

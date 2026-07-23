@@ -1,9 +1,16 @@
-export type ExerciseKind = 'Přímá zájmena' | 'Nepřímá zájmena' | 'Kombinovaná zájmena' | 'Budoucí čas';
+export type ExerciseKind =
+  | 'Přímá zájmena'
+  | 'Nepřímá zájmena'
+  | 'Kombinovaná zájmena'
+  | 'Budoucí čas'
+  | 'Zvratná slovesa'
+  | 'Přítomný čas';
 
 export type Exercise = {
   id: string;
   kind: ExerciseKind;
   sentence: string;
+  translation?: string;
   task: string;
   options: [string, string, string];
   correct: number;
@@ -16,6 +23,7 @@ export type ExerciseSet = {
   title: string;
   description: string;
   stemReminder?: string;
+  reminderTitle?: string;
   questions: Exercise[];
 };
 
