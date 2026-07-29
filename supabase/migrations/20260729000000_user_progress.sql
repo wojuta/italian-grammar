@@ -36,6 +36,9 @@ on public.exercise_progress for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
+grant select on table public.profiles to authenticated;
+grant select, insert, update on table public.exercise_progress to authenticated;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
