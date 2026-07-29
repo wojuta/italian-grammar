@@ -31,3 +31,21 @@ Po spuštění otevřete aplikaci v Expo Go pomocí QR kódu, případně stiskn
 - český překlad u všech 310 italských vět,
 - okamžitá zpětná vazba s vysvětlením,
 - závěrečné skóre a možnost cvičení zopakovat.
+
+## Uživatelské účty a Supabase
+
+Aplikace podporuje účty s uživatelským jménem a heslem bez zadávání e-mailu. Přihlášenému uživateli ukládá dokončená cvičení, nejlepší skóre a počet pokusů.
+
+1. Vytvořte projekt v Supabase.
+2. V **Authentication → Providers → Email** vypněte požadavek **Confirm email**. Aplikace používá interní technickou e-mailovou adresu odvozenou z uživatelského jména; uživatel ji nezadává ani nevidí.
+3. V SQL Editoru spusťte migraci [`supabase/migrations/20260729000000_user_progress.sql`](supabase/migrations/20260729000000_user_progress.sql).
+4. Zkopírujte `.env.example` jako `.env` a doplňte URL projektu a veřejný anon klíč:
+
+```text
+EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_PUBLIC_ANON_KEY
+```
+
+Anon klíč smí být ve webové aplikaci veřejný; přístup k datům omezuje Row Level Security. Nikdy do aplikace nevkládejte `service_role` klíč.
+
+Protože účty nemají skutečný e-mail ani telefon, aplikace neumí automaticky obnovit zapomenuté heslo.
