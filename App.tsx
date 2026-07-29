@@ -1,11 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -13,9 +16,20 @@ import { Exercise, exerciseSets } from './src/exercises';
 import { futureExerciseSets } from './src/futureExercises';
 import { presentExerciseSets } from './src/presentExercises';
 import { reflexiveExerciseSets } from './src/reflexiveExercises';
+import {
+  isSupabaseConfigured,
+  loadProgress,
+  normalizeUsername,
+  saveProgress,
+  signInWithUsername,
+  signUpWithUsername,
+  supabase,
+  UserProgress,
+  validateUsername,
+} from './src/supabase';
 import { getExerciseTranslation } from './src/translations';
 
-type Screen = 'home' | 'grammar' | 'pronouns' | 'future' | 'reflexive' | 'present' | 'quiz' | 'result';
+type Screen = 'home' | 'account' | 'grammar' | 'pronouns' | 'future' | 'reflexive' | 'present' | 'quiz' | 'result';
 type Lesson = 'pronouns' | 'future' | 'reflexive' | 'present';
 
 const lessonSets = {
@@ -53,6 +67,14 @@ export default function App() {
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [score, setScore] = useState(0);
+  const [session, setSession] = useState<Session | null>(null);
+  const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMessage, setAuthMessage] = useState('');
+  const [progressMessage, setProgressMessage] = useState('');
 
   const question = questions[current];
   const currentSets = lessonSets[activeLesson];
@@ -60,6 +82,29 @@ export default function App() {
   const lessonScreen = lessonScreens[activeLesson];
   const translation = question?.translation ?? (question ? getExerciseTranslation(question.id) : undefined);
   const progress = useMemo(() => `${current + 1} / ${questions.length}`, [current, questions.length]);
+  const displayUsername = session?.user.user_metadata?.username as string | undefined;
+
+  const refreshProgress = async (nextSession: Session | null = session) => {
+    try {
+      setUserProgress(await loadProgress(nextSession));
+    } catch {
+      setProgressMessage('Výsledky se teď nepodařilo načíst.');
+    }
+  };
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      refreshProgress(data.session);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) refreshProgress(nextSession);
+      else setUserProgress([]);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   const beginQuiz = (setId: string = activeSetId, lesson: Lesson = activeLesson) => {
     const sets = lessonSets[lesson];
@@ -80,14 +125,62 @@ export default function App() {
     if (index === question.correct) setScore((value) => value + 1);
   };
 
-  const next = () => {
+  const next = async () => {
     if (current === questions.length - 1) {
+      if (session) {
+        try {
+          await saveProgress(session, activeLesson, activeSetId, score);
+          await refreshProgress(session);
+          setProgressMessage('Výsledek je uložený.');
+        } catch {
+          setProgressMessage('Výsledek se nepodařilo uložit. Zkus to znovu později.');
+        }
+      }
       setScreen('result');
       return;
     }
     setCurrent((value) => value + 1);
     setSelected(null);
   };
+
+  const submitAuth = async () => {
+    setAuthMessage('');
+    if (!validateUsername(username)) {
+      setAuthMessage('Jméno musí mít 3–24 znaků: malá písmena, čísla, tečka, pomlčka nebo podtržítko.');
+      return;
+    }
+    if (password.length < 8) {
+      setAuthMessage('Heslo musí mít alespoň 8 znaků.');
+      return;
+    }
+    setAuthBusy(true);
+    try {
+      const action = authMode === 'signup' ? signUpWithUsername : signInWithUsername;
+      const { data, error } = await action(username, password);
+      if (error) throw error;
+      if (!data.session) {
+        setAuthMessage('Účet vznikl, ale Supabase vyžaduje potvrzení e-mailu. V projektu vypni „Confirm email“ a registraci zopakuj.');
+        return;
+      }
+      setUsername('');
+      setPassword('');
+      setAuthMessage('');
+      setScreen('home');
+    } catch {
+      setAuthMessage(authMode === 'signup'
+        ? 'Registrace se nezdařila. Jméno už může být obsazené.'
+        : 'Nesprávné uživatelské jméno nebo heslo.');
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const signOut = async () => {
+    await supabase?.auth.signOut();
+    setScreen('home');
+  };
+
+  const progressFor = (setId: string) => userProgress.find((item) => item.exercise_set_id === setId);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -97,6 +190,9 @@ export default function App() {
           <View style={styles.brandRow}>
             <View style={styles.flag}><View style={styles.flagGreen} /><View style={styles.flagWhite} /><View style={styles.flagRed} /></View>
             <Text style={styles.eyebrow}>ITALŠTINA KAŽDÝ DEN</Text>
+            <Pressable accessibilityRole="button" onPress={() => setScreen('account')} style={styles.accountButton}>
+              <Text style={styles.accountButtonText}>{session ? displayUsername ?? 'Profil' : 'Přihlásit'}</Text>
+            </Pressable>
           </View>
           <Text style={styles.hero}>Impara.{`\n`}Prova. <Text style={styles.heroAccent}>Parla.</Text></Text>
           <Text style={styles.lead}>Krátká cvičení, díky kterým italská gramatika konečně zapadne na své místo.</Text>
@@ -113,6 +209,45 @@ export default function App() {
             <Text style={styles.comingSoonTitle}>Další lekce připravujeme</Text>
             <Text style={styles.comingSoonText}>Slovíčka, poslech a konverzace přibudou postupně.</Text>
           </View>
+        </ScrollView>
+      )}
+
+      {screen === 'account' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('home')} />
+          <Text style={styles.eyebrow}>MŮJ ÚČET</Text>
+          <Text style={styles.heading}>{session ? `Ciao, ${displayUsername ?? 'studente'}!` : 'Přihlášení'}</Text>
+          {!isSupabaseConfigured ? (
+            <View style={styles.noticeCard}>
+              <Text style={styles.noticeTitle}>Supabase čeká na připojení</Text>
+              <Text style={styles.noticeText}>Doplň EXPO_PUBLIC_SUPABASE_URL a EXPO_PUBLIC_SUPABASE_ANON_KEY. Do té doby aplikace funguje bez účtu a výsledky se neukládají.</Text>
+            </View>
+          ) : session ? (
+            <>
+              <Text style={styles.lead}>Dokončeno {userProgress.length} z 31 cvičení. U každého ukládáme nejlepší skóre a počet pokusů.</Text>
+              <View style={styles.statsCard}>
+                <Text style={styles.statsNumber}>{userProgress.length}</Text>
+                <Text style={styles.statsLabel}>DOKONČENÝCH CVIČENÍ</Text>
+                <Text style={styles.statsScore}>{userProgress.reduce((sum, item) => sum + item.best_score, 0)} / {userProgress.length * 10 || 0} nejlepších bodů</Text>
+              </View>
+              <Pressable accessibilityRole="button" onPress={signOut} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>Odhlásit se</Text></Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.lead}>Účet ti umožní sledovat dokončená cvičení, nejlepší skóre a počet pokusů.</Text>
+              <View style={styles.authTabs}>
+                <Pressable onPress={() => { setAuthMode('signin'); setAuthMessage(''); }} style={[styles.authTab, authMode === 'signin' && styles.authTabActive]}><Text style={[styles.authTabText, authMode === 'signin' && styles.authTabTextActive]}>Přihlásit</Text></Pressable>
+                <Pressable onPress={() => { setAuthMode('signup'); setAuthMessage(''); }} style={[styles.authTab, authMode === 'signup' && styles.authTabActive]}><Text style={[styles.authTabText, authMode === 'signup' && styles.authTabTextActive]}>Vytvořit účet</Text></Pressable>
+              </View>
+              <TextInput autoCapitalize="none" autoCorrect={false} value={username} onChangeText={setUsername} placeholder="Uživatelské jméno" placeholderTextColor={COLORS.muted} style={styles.input} />
+              <TextInput secureTextEntry value={password} onChangeText={setPassword} placeholder="Heslo (min. 8 znaků)" placeholderTextColor={COLORS.muted} style={styles.input} />
+              {authMessage ? <Text style={styles.authMessage}>{authMessage}</Text> : null}
+              <Pressable accessibilityRole="button" disabled={authBusy} onPress={submitAuth} style={[styles.primaryButton, authBusy && styles.disabled]}>
+                {authBusy ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryButtonText}>{authMode === 'signup' ? 'Vytvořit účet' : 'Přihlásit se'}</Text>}
+              </Pressable>
+              <Text style={styles.passwordWarning}>Bez e-mailu nelze automaticky obnovit zapomenuté heslo.</Text>
+            </>
+          )}
         </ScrollView>
       )}
 
@@ -185,7 +320,7 @@ export default function App() {
                   <Text style={styles.exerciseDescription}>{set.description}</Text>
                 </View>
                 <View style={styles.exerciseMeta}>
-                  <Text style={styles.exerciseCount}>10 VĚT</Text>
+                  {progressFor(set.id) ? <Text style={styles.completedScore}>✓ {progressFor(set.id)?.best_score}/10</Text> : <Text style={styles.exerciseCount}>10 VĚT</Text>}
                   <Text style={styles.exerciseArrow}>›</Text>
                 </View>
               </Pressable>
@@ -219,7 +354,7 @@ export default function App() {
                   {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
                 </View>
                 <View style={styles.exerciseMeta}>
-                  <Text style={styles.exerciseCount}>10 VĚT</Text>
+                  {progressFor(set.id) ? <Text style={styles.completedScore}>✓ {progressFor(set.id)?.best_score}/10</Text> : <Text style={styles.exerciseCount}>10 VĚT</Text>}
                   <Text style={styles.exerciseArrow}>›</Text>
                 </View>
               </Pressable>
@@ -253,7 +388,7 @@ export default function App() {
                   <Text style={styles.exerciseDescription}>{set.description}</Text>
                   {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
                 </View>
-                <View style={styles.exerciseMeta}><Text style={styles.exerciseCount}>10 VĚT</Text><Text style={styles.exerciseArrow}>›</Text></View>
+                <View style={styles.exerciseMeta}>{progressFor(set.id) ? <Text style={styles.completedScore}>✓ {progressFor(set.id)?.best_score}/10</Text> : <Text style={styles.exerciseCount}>10 VĚT</Text>}<Text style={styles.exerciseArrow}>›</Text></View>
               </Pressable>
             ))}
           </View>
@@ -285,7 +420,7 @@ export default function App() {
                   <Text style={styles.exerciseDescription}>{set.description}</Text>
                   {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
                 </View>
-                <View style={styles.exerciseMeta}><Text style={styles.exerciseCount}>10 VĚT</Text><Text style={styles.exerciseArrow}>›</Text></View>
+                <View style={styles.exerciseMeta}>{progressFor(set.id) ? <Text style={styles.completedScore}>✓ {progressFor(set.id)?.best_score}/10</Text> : <Text style={styles.exerciseCount}>10 VĚT</Text>}<Text style={styles.exerciseArrow}>›</Text></View>
               </Pressable>
             ))}
           </View>
@@ -355,6 +490,7 @@ export default function App() {
           <Text style={styles.resultScore}>{score} / 10</Text>
           <Text style={styles.heading}>{score >= 8 ? 'Ottimo lavoro!' : score >= 5 ? 'Dobrá práce!' : 'Každý pokus se počítá.'}</Text>
           <Text style={styles.lead}>Správně jsi odpověděl/a na {score} z 10 otázek.</Text>
+          <Text style={styles.saveStatus}>{session ? progressMessage : 'Přihlas se a výsledky se budou ukládat do tvého profilu.'}</Text>
           <Pressable accessibilityRole="button" onPress={() => beginQuiz()} style={styles.primaryButton}><Text style={styles.primaryButtonText}>Procvičit znovu</Text></Pressable>
           {activeSet && activeSet.number < currentSets.length && (
             <Pressable accessibilityRole="button" onPress={() => beginQuiz(currentSets[activeSet.number]?.id ?? activeSetId)} style={styles.nextSetButton}><Text style={styles.nextSetButtonText}>Pokračovat cvičením {activeSet.number + 1}  →</Text></Pressable>
@@ -375,6 +511,8 @@ const styles = StyleSheet.create({
   page: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 40 },
   quizPage: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 28 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 52 },
+  accountButton: { marginLeft: 'auto', backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.line, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
+  accountButtonText: { color: COLORS.green, fontSize: 12, fontWeight: '800', maxWidth: 110 },
   flag: { width: 34, height: 22, flexDirection: 'row', overflow: 'hidden', borderRadius: 4 },
   flagGreen: { flex: 1, backgroundColor: '#16865B' }, flagWhite: { flex: 1, backgroundColor: '#FFF' }, flagRed: { flex: 1, backgroundColor: '#CE3F4D' },
   eyebrow: { color: COLORS.green, fontSize: 12, fontWeight: '800', letterSpacing: 1.8 },
@@ -389,6 +527,14 @@ const styles = StyleSheet.create({
   tileTitle: { color: '#FFF', fontSize: 19, fontWeight: '800', letterSpacing: 0.4 }, tileSubtitle: { color: '#D7EEE6', marginTop: 7, fontSize: 13, lineHeight: 18 }, arrow: { color: '#FFF', fontSize: 36, fontWeight: '300' },
   comingSoon: { marginTop: 18, padding: 20, borderWidth: 1, borderColor: COLORS.line, borderRadius: 20 },
   comingSoonTitle: { color: COLORS.ink, fontWeight: '700', fontSize: 15 }, comingSoonText: { color: COLORS.muted, fontSize: 13, lineHeight: 19, marginTop: 6 },
+  noticeCard: { backgroundColor: COLORS.paleRed, borderRadius: 20, padding: 20, marginTop: 30, borderWidth: 1, borderColor: '#EDC6BF' },
+  noticeTitle: { color: COLORS.ink, fontSize: 17, fontWeight: '800' }, noticeText: { color: COLORS.muted, fontSize: 14, lineHeight: 21, marginTop: 8 },
+  authTabs: { flexDirection: 'row', backgroundColor: '#E9E8E0', borderRadius: 16, padding: 4, marginTop: 30, marginBottom: 16 },
+  authTab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12 }, authTabActive: { backgroundColor: COLORS.card }, authTabText: { color: COLORS.muted, fontWeight: '700' }, authTabTextActive: { color: COLORS.green },
+  input: { backgroundColor: COLORS.card, borderWidth: 1.5, borderColor: COLORS.line, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, marginTop: 12, color: COLORS.ink, fontSize: 16 },
+  authMessage: { color: COLORS.red, fontSize: 13, lineHeight: 19, marginTop: 14 }, passwordWarning: { color: COLORS.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 16 },
+  disabled: { opacity: 0.55 },
+  statsCard: { backgroundColor: COLORS.ink, borderRadius: 24, padding: 24, marginTop: 30, alignItems: 'center' }, statsNumber: { color: COLORS.gold, fontSize: 58, fontWeight: '900' }, statsLabel: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1.3 }, statsScore: { color: '#D7EEE6', fontSize: 14, marginTop: 14 },
   back: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center', marginBottom: 38, borderWidth: 1, borderColor: COLORS.line },
   backText: { color: COLORS.ink, fontSize: 34, lineHeight: 37 }, heading: { color: COLORS.ink, fontSize: 40, fontWeight: '800', letterSpacing: -1.4, marginTop: 7 },
   lessonTile: { backgroundColor: COLORS.card, borderRadius: 26, padding: 24, marginTop: 36, borderWidth: 1, borderColor: COLORS.line, shadowColor: '#29443D', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
@@ -400,7 +546,7 @@ const styles = StyleSheet.create({
   exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line }, exerciseTileWithReminder: { minHeight: 100 },
   exerciseNumber: { width: 48, height: 48, borderRadius: 15, backgroundColor: COLORS.paleGreen, alignItems: 'center', justifyContent: 'center' }, exerciseNumberText: { color: COLORS.green, fontSize: 18, fontWeight: '900' },
   exerciseCopy: { flex: 1, marginLeft: 13 }, exerciseTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800' }, exerciseDescription: { color: COLORS.muted, fontSize: 12, marginTop: 5 }, exerciseStems: { color: COLORS.green, fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 6 },
-  exerciseMeta: { alignItems: 'flex-end', marginLeft: 8 }, exerciseCount: { color: COLORS.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 }, exerciseArrow: { color: COLORS.green, fontSize: 28, lineHeight: 31 },
+  exerciseMeta: { alignItems: 'flex-end', marginLeft: 8 }, exerciseCount: { color: COLORS.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 }, completedScore: { color: COLORS.green, fontSize: 11, fontWeight: '900' }, exerciseArrow: { color: COLORS.green, fontSize: 28, lineHeight: 31 },
   quizHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 34 }, close: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }, closeText: { color: COLORS.muted, fontSize: 30 },
   progressTrack: { flex: 1, height: 7, backgroundColor: '#E0E3DA', borderRadius: 8, overflow: 'hidden' }, progressFill: { height: '100%', backgroundColor: COLORS.green, borderRadius: 8 }, progressText: { color: COLORS.muted, fontSize: 12, fontWeight: '700' },
   kind: { color: COLORS.green, fontSize: 11, fontWeight: '800', letterSpacing: 1.3 }, prompt: { color: COLORS.ink, fontSize: 25, lineHeight: 32, fontWeight: '800', marginTop: 10 },
@@ -413,7 +559,7 @@ const styles = StyleSheet.create({
   correctOption: { borderColor: COLORS.green, backgroundColor: COLORS.paleGreen }, wrongOption: { borderColor: COLORS.red, backgroundColor: COLORS.paleRed }, correctLetter: { backgroundColor: COLORS.green }, wrongLetter: { backgroundColor: COLORS.red }, whiteText: { color: '#FFF' },
   feedback: { marginTop: 20, borderRadius: 20, padding: 18 }, feedbackCorrect: { backgroundColor: COLORS.paleGreen }, feedbackWrong: { backgroundColor: COLORS.paleRed }, feedbackTitle: { color: COLORS.ink, fontSize: 18, fontWeight: '800' }, feedbackText: { color: COLORS.ink, fontSize: 14, lineHeight: 20, marginTop: 6 },
   nextButton: { backgroundColor: COLORS.ink, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 16 }, nextButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-  resultPage: { alignItems: 'center', justifyContent: 'center' }, resultEmoji: { fontSize: 60, marginBottom: 22 }, resultScore: { color: COLORS.green, fontSize: 64, fontWeight: '900', letterSpacing: -3, marginTop: 14 },
+  resultPage: { alignItems: 'center', justifyContent: 'center' }, resultEmoji: { fontSize: 60, marginBottom: 22 }, resultScore: { color: COLORS.green, fontSize: 64, fontWeight: '900', letterSpacing: -3, marginTop: 14 }, saveStatus: { color: COLORS.muted, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 12 },
   primaryButton: { backgroundColor: COLORS.green, borderRadius: 16, paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 38 }, primaryButtonText: { color: '#FFF', fontWeight: '800', fontSize: 16 }, secondaryButton: { paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 8 }, secondaryButtonText: { color: COLORS.green, fontWeight: '800', fontSize: 15 },
   nextSetButton: { backgroundColor: COLORS.ink, borderRadius: 16, paddingVertical: 17, width: '100%', alignItems: 'center', marginTop: 10 }, nextSetButtonText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
 });
