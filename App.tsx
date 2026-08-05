@@ -55,6 +55,7 @@ const COLORS = {
   paleGreen: '#DDEDE5',
   red: '#C64B40',
   paleRed: '#F9E4E0',
+  paleYellow: '#FFF2BF',
   gold: '#F2B84B',
   line: '#DFE2D9',
 };
@@ -313,7 +314,7 @@ export default function App() {
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
           <View style={styles.exerciseList}>
             {exerciseSets.map((set) => (
-              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'pronouns')} style={({ pressed }) => [styles.exerciseTile, pressed && styles.pressed]}>
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'pronouns')} style={({ pressed }) => [styles.exerciseTile, progressFor(set.id)?.best_score === 10 ? styles.exerciseTilePerfect : progressFor(set.id) ? styles.exerciseTileCompleted : null, pressed && styles.pressed]}>
                 <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
                 <View style={styles.exerciseCopy}>
                   <Text style={styles.exerciseTitle}>{set.title}</Text>
@@ -346,7 +347,7 @@ export default function App() {
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
           <View style={styles.exerciseList}>
             {futureExerciseSets.map((set) => (
-              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'future')} style={({ pressed }) => [styles.exerciseTile, set.stemReminder && styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'future')} style={({ pressed }) => [styles.exerciseTile, set.stemReminder && styles.exerciseTileWithReminder, progressFor(set.id)?.best_score === 10 ? styles.exerciseTilePerfect : progressFor(set.id) ? styles.exerciseTileCompleted : null, pressed && styles.pressed]}>
                 <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
                 <View style={styles.exerciseCopy}>
                   <Text style={styles.exerciseTitle}>{set.title}</Text>
@@ -381,7 +382,7 @@ export default function App() {
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
           <View style={styles.exerciseList}>
             {reflexiveExerciseSets.map((set) => (
-              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'reflexive')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'reflexive')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, progressFor(set.id)?.best_score === 10 ? styles.exerciseTilePerfect : progressFor(set.id) ? styles.exerciseTileCompleted : null, pressed && styles.pressed]}>
                 <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
                 <View style={styles.exerciseCopy}>
                   <Text style={styles.exerciseTitle}>{set.title}</Text>
@@ -413,7 +414,7 @@ export default function App() {
           <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
           <View style={styles.exerciseList}>
             {presentExerciseSets.map((set) => (
-              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'present')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, pressed && styles.pressed]}>
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'present')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, progressFor(set.id)?.best_score === 10 ? styles.exerciseTilePerfect : progressFor(set.id) ? styles.exerciseTileCompleted : null, pressed && styles.pressed]}>
                 <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
                 <View style={styles.exerciseCopy}>
                   <Text style={styles.exerciseTitle}>{set.title}</Text>
@@ -543,7 +544,10 @@ const styles = StyleSheet.create({
   questionCount: { color: COLORS.muted, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 }, lessonTitle: { color: COLORS.ink, fontSize: 28, lineHeight: 33, fontWeight: '800', marginTop: 28 }, lessonText: { color: COLORS.muted, fontSize: 14, marginTop: 10 },
   startRow: { borderTopWidth: 1, borderTopColor: COLORS.line, marginTop: 28, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between' }, startText: { color: COLORS.green, fontWeight: '800', fontSize: 15 }, startArrow: { color: COLORS.green, fontSize: 20 },
   ruleCard: { backgroundColor: COLORS.ink, borderRadius: 22, padding: 22, marginTop: 30 }, ruleTitle: { color: COLORS.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.4, marginBottom: 12 }, ruleLine: { color: '#E7F0EC', fontSize: 14, lineHeight: 24 }, ruleStrong: { color: '#FFF', fontWeight: '800' },
-  exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line }, exerciseTileWithReminder: { minHeight: 100 },
+  exerciseList: { gap: 12 }, exerciseTile: { backgroundColor: COLORS.card, borderRadius: 19, minHeight: 82, padding: 13, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: COLORS.line },
+  exerciseTilePerfect: { backgroundColor: COLORS.paleGreen, borderColor: '#9CCBB5' },
+  exerciseTileCompleted: { backgroundColor: COLORS.paleYellow, borderColor: '#DFC367' },
+  exerciseTileWithReminder: { minHeight: 100 },
   exerciseNumber: { width: 48, height: 48, borderRadius: 15, backgroundColor: COLORS.paleGreen, alignItems: 'center', justifyContent: 'center' }, exerciseNumberText: { color: COLORS.green, fontSize: 18, fontWeight: '900' },
   exerciseCopy: { flex: 1, marginLeft: 13 }, exerciseTitle: { color: COLORS.ink, fontSize: 15, fontWeight: '800' }, exerciseDescription: { color: COLORS.muted, fontSize: 12, marginTop: 5 }, exerciseStems: { color: COLORS.green, fontSize: 10, lineHeight: 15, fontWeight: '700', marginTop: 6 },
   exerciseMeta: { alignItems: 'flex-end', marginLeft: 8 }, exerciseCount: { color: COLORS.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.8 }, completedScore: { color: COLORS.green, fontSize: 11, fontWeight: '900' }, exerciseArrow: { color: COLORS.green, fontSize: 28, lineHeight: 31 },
