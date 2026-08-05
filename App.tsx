@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { Exercise, exerciseSets } from './src/exercises';
+import { conditionalExerciseSets } from './src/conditionalExercises';
 import { futureExerciseSets } from './src/futureExercises';
 import { presentExerciseSets } from './src/presentExercises';
 import { reflexiveExerciseSets } from './src/reflexiveExercises';
@@ -29,12 +30,13 @@ import {
 } from './src/supabase';
 import { getExerciseTranslation } from './src/translations';
 
-type Screen = 'home' | 'account' | 'grammar' | 'pronouns' | 'future' | 'reflexive' | 'present' | 'quiz' | 'result';
-type Lesson = 'pronouns' | 'future' | 'reflexive' | 'present';
+type Screen = 'home' | 'account' | 'grammar' | 'pronouns' | 'future' | 'conditional' | 'reflexive' | 'present' | 'quiz' | 'result';
+type Lesson = 'pronouns' | 'future' | 'conditional' | 'reflexive' | 'present';
 
 const lessonSets = {
   pronouns: exerciseSets,
   future: futureExerciseSets,
+  conditional: conditionalExerciseSets,
   reflexive: reflexiveExerciseSets,
   present: presentExerciseSets,
 };
@@ -42,6 +44,7 @@ const lessonSets = {
 const lessonScreens: Record<Lesson, Screen> = {
   pronouns: 'pronouns',
   future: 'future',
+  conditional: 'conditional',
   reflexive: 'reflexive',
   present: 'present',
 };
@@ -225,7 +228,7 @@ export default function App() {
             </View>
           ) : session ? (
             <>
-              <Text style={styles.lead}>Dokončeno {userProgress.length} z 31 cvičení. U každého ukládáme nejlepší skóre a počet pokusů.</Text>
+              <Text style={styles.lead}>Dokončeno {userProgress.length} z 41 cvičení. U každého ukládáme nejlepší skóre a počet pokusů.</Text>
               <View style={styles.statsCard}>
                 <Text style={styles.statsNumber}>{userProgress.length}</Text>
                 <Text style={styles.statsLabel}>DOKONČENÝCH CVIČENÍ</Text>
@@ -274,6 +277,15 @@ export default function App() {
             </View>
             <Text style={styles.lessonTitle}>Budoucí čas</Text>
             <Text style={styles.lessonText}>parlerò, prenderai, partiremo • sarò, avrò, andrò…</Text>
+            <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setScreen('conditional')} style={({ pressed }) => [styles.lessonTile, styles.secondLessonTile, pressed && styles.pressed]}>
+            <View style={styles.lessonTop}>
+              <View style={styles.badge}><Text style={styles.badgeText}>A2–B1</Text></View>
+              <Text style={styles.questionCount}>10 CVIČENÍ · 100 VĚT</Text>
+            </View>
+            <Text style={styles.lessonTitle}>Podmiňovací způsob</Text>
+            <Text style={styles.lessonText}>parlerei, prenderesti, partirebbe • sarei, avrei, vorrei…</Text>
             <View style={styles.startRow}><Text style={styles.startText}>Otevřít lekci</Text><Text style={styles.startArrow}>→</Text></View>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setScreen('reflexive')} style={({ pressed }) => [styles.lessonTile, styles.secondLessonTile, pressed && styles.pressed]}>
@@ -364,6 +376,38 @@ export default function App() {
         </ScrollView>
       )}
 
+      {screen === 'conditional' && (
+        <ScrollView contentContainerStyle={styles.page}>
+          <BackButton onPress={() => setScreen('grammar')} />
+          <Text style={styles.eyebrow}>GRAMATIKA · A2–B1</Text>
+          <Text style={styles.heading}>Podmiňovací způsob</Text>
+          <Text style={styles.lead}>Deset pevných cvičení po deseti větách na condizionale presente. Pravidelné a nepravidelné kmeny procvičíš nejprve odděleně a nakonec skutečně smíšeně.</Text>
+
+          <View style={styles.ruleCard}>
+            <Text style={styles.ruleTitle}>CONDIZIONALE PRESENTE</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>io</Text> -ei · <Text style={styles.ruleStrong}>tu</Text> -esti · <Text style={styles.ruleStrong}>lui/lei</Text> -ebbe</Text>
+            <Text style={styles.ruleLine}><Text style={styles.ruleStrong}>noi</Text> -emmo · <Text style={styles.ruleStrong}>voi</Text> -este · <Text style={styles.ruleStrong}>loro</Text> -ebbero</Text>
+            <Text style={styles.ruleLine}>Používá stejný kmen jako budoucí čas: parlare → <Text style={styles.ruleStrong}>parler-</Text>, avere → <Text style={styles.ruleStrong}>avr-</Text>.</Text>
+            <Text style={styles.ruleLine}>Vyjadřuje přání, zdvořilou žádost, radu nebo děj závislý na podmínce.</Text>
+          </View>
+
+          <Text style={styles.sectionLabel}>VYBER CVIČENÍ</Text>
+          <View style={styles.exerciseList}>
+            {conditionalExerciseSets.map((set) => (
+              <Pressable key={set.id} accessibilityRole="button" onPress={() => beginQuiz(set.id, 'conditional')} style={({ pressed }) => [styles.exerciseTile, styles.exerciseTileWithReminder, progressFor(set.id)?.best_score === 10 ? styles.exerciseTilePerfect : progressFor(set.id) ? styles.exerciseTileCompleted : null, pressed && styles.pressed]}>
+                <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{set.number}</Text></View>
+                <View style={styles.exerciseCopy}>
+                  <Text style={styles.exerciseTitle}>{set.title}</Text>
+                  <Text style={styles.exerciseDescription}>{set.description}</Text>
+                  {set.stemReminder && <Text style={styles.exerciseStems}>{set.stemReminder}</Text>}
+                </View>
+                <View style={styles.exerciseMeta}>{progressFor(set.id) ? <Text style={styles.completedScore}>✓ {progressFor(set.id)?.best_score}/10</Text> : <Text style={styles.exerciseCount}>10 VĚT</Text>}<Text style={styles.exerciseArrow}>›</Text></View>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
       {screen === 'reflexive' && (
         <ScrollView contentContainerStyle={styles.page}>
           <BackButton onPress={() => setScreen('grammar')} />
@@ -439,6 +483,8 @@ export default function App() {
           <Text style={styles.prompt}>{
             question.kind === 'Budoucí čas'
               ? 'Doplň správný tvar slovesa v budoucím čase.'
+              : question.kind === 'Podmiňovací způsob'
+                ? 'Doplň správný tvar slovesa v přítomném podmiňovacím způsobu.'
               : question.kind === 'Zvratná slovesa'
                 ? 'Vyber správný tvar zvratného slovesa.'
                 : question.kind === 'Přítomný čas'
