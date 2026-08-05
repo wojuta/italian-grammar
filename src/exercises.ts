@@ -3,6 +3,7 @@ export type ExerciseKind =
   | 'Nepřímá zájmena'
   | 'Kombinovaná zájmena'
   | 'Budoucí čas'
+  | 'Podmiňovací způsob'
   | 'Zvratná slovesa'
   | 'Přítomný čas';
 
